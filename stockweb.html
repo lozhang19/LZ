@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Stock Trends</title>
+    <style>
+      #myChart {
+        width: 100%;
+      }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@latest"></script>
+  </head>
+  <body>
+    <input type="text" id="stockInput" placeholder="Enter stock symbols separated by commas">
+    <button onclick="addStocks()">Add Stocks</button>
+    <button onclick="bookmarkStocks()">Bookmark Selected Stock</button>
+    <canvas id="myChart" height="500"></canvas>
+    <div id="bookmarkedStocks">
+      <h2>Bookmarked Stocks (收藏):</h2>
+      <ul id="stocksList"></ul>
+    </div>
+    <script>
+      let stocks = ['AAPL', 'MSFT', 'GOOGL'];
+      const data = {};
+      let datasets = [];
+      let chartInstance;
+      let bookmarkedStocks = [];
+
+      async function getData(stock) {
+        const response = await fetch(`https://financialmodelingprep.com/api/v3/historical-price-full/${stock}?serietype=line&timeseries=365&apikey=ef619d17babeefdd3c9ee0d4b0b70ac0`);
+        const json = await response.json();
+        data[stock] = json.historical.map(h => h.close);
+      }
+
+      async function plotData() {
+        for (const stock of stocks) {
+          await getData(stock);
+          datasets.push({
+            label: stock,
+            data: data[stock],
+            borderColor: '#' + Math.floor(Math.random()*16777215).toString(16),
+            fill: false,
+            borderWidth: 1
+          });
+        }
+
+        if (!chartInstance) {
+          const ctx = document.getElementById('myChart').getContext('2d');
+          chartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+              labels: data[stocks[0]].map((_, i) => i),
+              datasets
+            },
+            options: {
+              responsive: false,
+              maintainAspectRatio: false,
+              plugins: {
+                zoom: {
+                  pan: {
+                    enabled: true,
+                    mode: 'x'
+                  },
+                  zoom: {
+                    wheel: {
+                      enabled: true
+                    },
+                    pinch: {
+                      enabled: true
+                    },
+                    mode: 'x'
+                  }
+                }
+              }
+            }
+          });
+        } else {
+          chartInstance.data.datasets = datasets;
+          chartInstance.update();
+        }
+      }
+
+      plotData();
+
+      async function addStocks() {
+        const input = document.getElementById('stockInput').value;
+        const newStocks = input.split(',');
+
+        for (const stock of newStocks) {
+          if (!stocks.includes(stock)) {
+            stocks.push(stock);
+          }
+        }
+
+        datasets = [];
+        await plotData();
+      }
+
+      function updateBookmarkedStocksList() {
+        const stocksList = document.getElementById('stocksList');
+        stocksList.innerHTML = '';
+
+        for (const stock of bookmarkedStocks) {
+          const listItem = document.createElement('li');
+          listItem.textContent = stock;
+          stocksList.appendChild(listItem);
+        }
+      }
+
+    </script>
+  </body>
+</html>
